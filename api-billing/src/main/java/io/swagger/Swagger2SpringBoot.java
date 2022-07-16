@@ -24,6 +24,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 public class Swagger2SpringBoot implements CommandLineRunner {
 
 
+
     @Override
     public void run(String... arg0) throws Exception {
         if (arg0.length > 0 && arg0[0].equals("exitcode")) {
