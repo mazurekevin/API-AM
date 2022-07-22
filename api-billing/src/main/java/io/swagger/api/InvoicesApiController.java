@@ -25,7 +25,7 @@ import java.io.IOException;
 @RestController
 public class InvoicesApiController implements InvoicesApi {
 
-    private final String TOPIC_NAME = "Invoices";
+    private final String TOPIC_NAME = "invoices";
 
     private static final Logger log = LoggerFactory.getLogger(InvoicesApiController.class);
 

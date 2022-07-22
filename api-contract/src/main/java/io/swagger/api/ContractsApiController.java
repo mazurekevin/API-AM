@@ -1,5 +1,6 @@
 package io.swagger.api;
 
+import io.swagger.kafka.Kafka;
 import io.swagger.model.ContractActionRequest;
 import io.swagger.model.ContractRequest;
 import io.swagger.model.ContractResponse;
@@ -40,16 +41,21 @@ import java.util.Map;
 @RestController
 public class ContractsApiController implements ContractsApi {
 
+    private final String TOPIC_NAME = "contracts";
+
     private static final Logger log = LoggerFactory.getLogger(ContractsApiController.class);
 
     private final ObjectMapper objectMapper;
 
     private final HttpServletRequest request;
 
+    private Kafka kafka;
+
     @org.springframework.beans.factory.annotation.Autowired
-    public ContractsApiController(ObjectMapper objectMapper, HttpServletRequest request) {
+    public ContractsApiController(ObjectMapper objectMapper, HttpServletRequest request, Kafka kafka) {
         this.objectMapper = objectMapper;
         this.request = request;
+        this.kafka = kafka;
     }
 
     public ResponseEntity<ContractResponse> getContract(@Parameter(in = ParameterIn.PATH, description = "External identifier of the contract", required=true, schema=@Schema()) @PathVariable("contractRef") String contractRef) {
@@ -72,17 +78,18 @@ public class ContractsApiController implements ContractsApi {
     }
 
     public ResponseEntity<ContractResponse> postContract(@Parameter(in = ParameterIn.DEFAULT, description = "", schema=@Schema()) @Valid @RequestBody ContractRequest body) {
-        String accept = request.getHeader("Accept");
-        if (accept != null && accept.contains("application/json")) {
             try {
-                return new ResponseEntity<ContractResponse>(objectMapper.readValue("{\n  \"ContractRequest\" : {\n    \"$ref\" : \"#/components/examples/ContractRequest\"\n  }\n}", ContractResponse.class), HttpStatus.OK);
+                ResponseEntity<ContractResponse> res =  new ResponseEntity<ContractResponse>(objectMapper.readValue("{\n  \"ContractRequest\" : {\n    \"$ref\" : \"#/components/examples/ContractRequest\"\n  }\n}", ContractResponse.class), HttpStatus.CREATED);
+                if (res.getStatusCode() == HttpStatus.CREATED) {
+                    kafka.send(TOPIC_NAME, "Contract signed at " + body.getSignedAt() + " is " + body.getStatus());
+                } else {
+                    kafka.send(TOPIC_NAME, "Invoice creation failed");
+                }
+                return res;
             } catch (IOException e) {
                 log.error("Couldn't serialize response for content type application/json", e);
                 return new ResponseEntity<ContractResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
-        }
-
-        return new ResponseEntity<ContractResponse>(HttpStatus.BAD_REQUEST);
     }
 
     public ResponseEntity<ContractsResponse> searchContracts(@Parameter(in = ParameterIn.QUERY, description = "External identifier of the subscriber" ,schema=@Schema()) @Valid @RequestParam(value = "subscriberRef", required = false) String subscriberRef,@Parameter(in = ParameterIn.QUERY, description = "Contract Status" ,schema=@Schema()) @Valid @RequestParam(value = "contractStatus", required = false) String contractStatus,@Parameter(in = ParameterIn.QUERY, description = "Limits the number of items on a page" ,schema=@Schema()) @Valid @RequestParam(value = "limit", required = false) Integer limit,@Parameter(in = ParameterIn.QUERY, description = "Specifies the page number of the list to be displayed" ,schema=@Schema()) @Valid @RequestParam(value = "offset", required = false) Integer offset) {
