@@ -18,9 +18,9 @@ public class Kafka {
         this.kafkaTemplate.send(topic, message);
     }
 
-    @KafkaListener(topics = TOPIC_NAME, groupId = "my-group-id")
+    /*@KafkaListener(topics = TOPIC_NAME, groupId = "my-group-id")
     public void listen(String message) {
         System.out.println("Received Message in group - " + TOPIC_NAME + ": " + message);
-    }
+    }*/
 
 }
